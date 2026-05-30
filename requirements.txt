@@ -1,0 +1,27 @@
+# --- Core ETL ---
+pandas>=2.2
+pyyaml>=6.0
+pydantic>=2.7
+python-dotenv>=1.0
+
+# --- Extraction: Excel ---
+openpyxl>=3.1            # .xlsx / .xlsm
+# xlrd>=2.0             # uncomment for legacy .xls files
+
+# --- Extraction: Database (SQLAlchemy + drivers) ---
+SQLAlchemy>=2.0
+psycopg2-binary>=2.9     # PostgreSQL
+# pymysql>=1.1          # MySQL / MariaDB
+# pyodbc>=5.0           # SQL Server
+# oracledb>=2.0         # Oracle
+
+# --- Extraction: API / SAP OData ---
+requests>=2.32
+
+# --- Orchestration ---
+prefect>=3.0
+
+# --- Optional SAP integrations (require system-level SDKs) ---
+# pyrfc                 # RFC/BAPI — needs the SAP NW RFC SDK
+# hdbcli                # SAP HANA direct SQL
+# sqlalchemy-hana       # SAP HANA via SQLAlchemy URL

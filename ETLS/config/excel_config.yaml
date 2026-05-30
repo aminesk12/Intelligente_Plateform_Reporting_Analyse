@@ -1,0 +1,12 @@
+# Excel extractor configuration.
+# Used by: ExcelExtractor.from_config("ETLS/config/excel_config.yaml")
+excel:
+  name: "File name" 
+  file_path: "DATA/Excel/.."
+  sheet_name: 0            # sheet name (str) or index (int)
+  read_options:            # forwarded to pandas.read_excel
+    header: 0
+    # skiprows: 2
+    # usecols: "A:F"
+    # dtype:
+    #   customer_id: str

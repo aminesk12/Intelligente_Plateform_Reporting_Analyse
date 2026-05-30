@@ -1,0 +1,24 @@
+# Database extractor configuration.
+# Used by: DatabaseExtractor.from_config("ETLS/config/database_config.yaml")
+#
+# Option A — full SQLAlchemy URL (recommended). Secrets come from env vars
+# expanded as ${VAR} (see .env.example).
+database:
+  name: analytics_dwh
+  connection_url: postgresql+psycopg2://${DB_USER}:${DB_PASSWORD}@${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME}
+  pool_pre_ping: true
+
+# Option B — assemble from parts (uncomment and remove connection_url above):
+#   drivername: postgresql+psycopg2
+#   host: ${DB_HOST:localhost}
+#   port: 5432
+#   database: ${DB_NAME}
+#   username: ${DB_USER}
+#   password: ${DB_PASSWORD}
+#
+# Driver reference (install the matching package — see requirements.txt):
+#   PostgreSQL : postgresql+psycopg2://...
+#   MySQL      : mysql+pymysql://...
+#   SQL Server : mssql+pyodbc://...?driver=ODBC+Driver+18+for+SQL+Server
+#   Oracle     : oracle+oracledb://...
+#   SQLite     : sqlite:///path/to/file.db

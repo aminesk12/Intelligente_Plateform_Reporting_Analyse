@@ -1,0 +1,45 @@
+# REST API extractor configuration.
+# Used by: APIExtractor.from_config("ETLS/config/api_config.yaml")
+api:
+  name: orders_api
+  base_url: https://api.example.com/v1/orders
+  method: GET
+  records_path: data.items      # dotted path to the record list in the JSON body
+
+  auth:
+    type: bearer                # none | bearer | api_key | basic
+    token: ${API_TOKEN}
+    # --- api_key example ---
+    # type: api_key
+    # key: ${API_KEY}
+    # name: X-API-Key
+    # in: header                # header | query
+    # --- basic example ---
+    # type: basic
+    # username: ${API_USER}
+    # password: ${API_PASSWORD}
+
+  headers:
+    Accept: application/json
+
+  params:
+    status: completed
+
+  pagination:
+    type: page                  # page | offset | cursor
+    page_param: page
+    size_param: page_size
+    page_size: 100
+    start: 1
+    # --- offset style ---
+    # type: offset
+    # offset_param: offset
+    # limit_param: limit
+    # limit: 100
+    # --- cursor style ---
+    # type: cursor
+    # next_path: meta.next       # path to next URL, or to a cursor token
+    # cursor_param: cursor       # set only if next_path holds a token, not a URL
+
+  timeout: 30
+  max_pages: 1000
