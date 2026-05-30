@@ -1,10 +1,10 @@
 # SAP OData extractor configuration.
 # Used by: SAPODataExtractor.from_config("ETLS/config/sap_config.yaml")
 sap:
-  name: sales_orders
+  name: "logical_name_for_extractor"          # e.g. sap_sales_orders
   base_url: ${SAP_BASE_URL}                 # e.g. https://host:443/sap/opu/odata/sap/ZSALES_SRV
-  entity_set: SalesOrderSet
-  sap_client: ${SAP_CLIENT:100}
+  entity_set: "entity_set_name"                    # e.g. SalesOrderSet
+  sap_client: ${SAP_CLIENT}                 # e.g. 100
   odata_version: 2                          # 2 or 4
 
   auth:
@@ -13,9 +13,9 @@ sap:
     password: ${SAP_PASSWORD}
 
   query_options:                            # OData $ options (without the $)
-    select: SalesOrderId,CustomerId,NetAmount,CreatedAt
-    filter: CreatedAt ge datetime'2025-01-01T00:00:00'
-    orderby: SalesOrderId
+    select: "Select_query"  # e.g. SalesOrderId,CreatedAt,TotalAmount
+    filter: "Filter_condition"                      # e.g. CreatedAt ge 2024-01-01T00:00:00Z
+    orderby: "OrderBy_condition"                    # e.g. CreatedAt desc
 
   page_size: 1000
   max_pages: 1000

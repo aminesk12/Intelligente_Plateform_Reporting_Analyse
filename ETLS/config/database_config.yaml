@@ -5,7 +5,7 @@
 # expanded as ${VAR} (see .env.example).
 database:
   name: analytics_dwh
-  connection_url: postgresql+psycopg2://${DB_USER}:${DB_PASSWORD}@${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME}
+  connection_url: "CONNECT_URL"
   pool_pre_ping: true
 
 # Option B — assemble from parts (uncomment and remove connection_url above):

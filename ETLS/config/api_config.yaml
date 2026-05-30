@@ -2,7 +2,7 @@
 # Used by: APIExtractor.from_config("ETLS/config/api_config.yaml")
 api:
   name: orders_api
-  base_url: https://api.example.com/v1/orders
+  base_url: "https://api.example.com/v1/orders"
   method: GET
   records_path: data.items      # dotted path to the record list in the JSON body
 
