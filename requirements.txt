@@ -25,3 +25,7 @@ prefect>=3.0
 # pyrfc                 # RFC/BAPI — needs the SAP NW RFC SDK
 # hdbcli                # SAP HANA direct SQL
 # sqlalchemy-hana       # SAP HANA via SQLAlchemy URL
+
+# --- Testing (dev only) ---
+pytest>=8.0
+responses>=0.25          # mock HTTP for API / SAP OData extractor tests
