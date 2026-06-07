@@ -29,3 +29,11 @@ class ExtractionError(ETLError):
 
 class TransformationError(ETLError):
     """Raised when a transformation step fails to process its input."""
+
+
+class DestinationConnectionError(ETLError):
+    """Raised when a load destination cannot be reached or authenticated."""
+
+
+class LoadError(ETLError):
+    """Raised when writing data to a destination fails."""

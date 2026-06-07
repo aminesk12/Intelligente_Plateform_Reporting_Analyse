@@ -1,12 +1,15 @@
 """Shared ETL foundation: base classes, config, logging, retries, errors."""
 
 from ETLS.core.base_extractor import BaseExtractor, ExtractionResult
+from ETLS.core.base_loader import BaseLoader, LoadInput, LoadResult
 from ETLS.core.base_transformer import BaseTransformer, TransformationResult
 from ETLS.core.config import load_yaml_config
 from ETLS.core.exceptions import (
     ConfigError,
+    DestinationConnectionError,
     ETLError,
     ExtractionError,
+    LoadError,
     SourceConnectionError,
     TransformationError,
     ValidationError,
@@ -21,6 +24,10 @@ __all__ = [
     # Transformation
     "BaseTransformer",
     "TransformationResult",
+    # Loading
+    "BaseLoader",
+    "LoadResult",
+    "LoadInput",
     # Utilities
     "load_yaml_config",
     "setup_logging",
@@ -32,4 +39,6 @@ __all__ = [
     "TransformationError",
     "SourceConnectionError",
     "ValidationError",
+    "DestinationConnectionError",
+    "LoadError",
 ]

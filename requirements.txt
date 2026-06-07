@@ -21,10 +21,10 @@ requests>=2.32
 # --- Orchestration ---
 prefect>=3.0
 
-# --- Optional SAP integrations (require system-level SDKs) ---
+# --- Optional SAP integrations ---
 # pyrfc                 # RFC/BAPI — needs the SAP NW RFC SDK
-# hdbcli                # SAP HANA direct SQL
-# sqlalchemy-hana       # SAP HANA via SQLAlchemy URL
+hdbcli>=2.21            # SAP HANA Python client — required by DataSphereLoader
+sqlalchemy_hana>=3.0    # SQLAlchemy dialect for HANA (preferred path in DataSphereLoader)
 
 # --- Testing (dev only) ---
 pytest>=8.0
