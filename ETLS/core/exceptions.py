@@ -25,3 +25,7 @@ class SourceConnectionError(ETLError):
 
 class ExtractionError(ETLError):
     """Raised when reading data from a source fails."""
+
+
+class TransformationError(ETLError):
+    """Raised when a transformation step fails to process its input."""
