@@ -101,6 +101,12 @@ class FileLoader(BaseLoader):
             name=cfg.get("name"),
         )
 
+    def __enter__(self) -> "FileLoader":
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        pass
+
     # -- contract --------------------------------------------------------------
 
     def validate(self) -> None:
