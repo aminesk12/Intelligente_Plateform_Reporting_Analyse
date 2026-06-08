@@ -1,14 +1,16 @@
-# REST API extractor configuration.
+# REST API extractor configuration — Alpha Vantage Market Status.
 # Used by: APIExtractor.from_config("ETLS/config/api_config.yaml")
 api:
-  name: orders_api
-  base_url: "https://api.example.com/v1/orders"
+  name: market_status_api
+  base_url: "https://www.alphavantage.co/query?function=MARKET_STATUS&apikey=PD5ZTN95XPG3NXB1"
   method: GET
-  records_path: data.items      # dotted path to the record list in the JSON body
+  records_path: markets         # top-level key in the Alpha Vantage response body
 
   auth:
-    type: bearer                # none | bearer | api_key | basic
-    token: ${API_TOKEN}
+    type: none                  # API key is embedded in the URL above
+    # --- bearer example ---
+    # type: bearer
+    # token: ${API_TOKEN}
     # --- api_key example ---
     # type: api_key
     # key: ${API_KEY}
@@ -22,24 +24,6 @@ api:
   headers:
     Accept: application/json
 
-  params:
-    status: completed
-
-  pagination:
-    type: page                  # page | offset | cursor
-    page_param: page
-    size_param: page_size
-    page_size: 100
-    start: 1
-    # --- offset style ---
-    # type: offset
-    # offset_param: offset
-    # limit_param: limit
-    # limit: 100
-    # --- cursor style ---
-    # type: cursor
-    # next_path: meta.next       # path to next URL, or to a cursor token
-    # cursor_param: cursor       # set only if next_path holds a token, not a URL
-
+  # no pagination — MARKET_STATUS returns a single-page response
   timeout: 30
-  max_pages: 1000
+  max_pages: 1
