@@ -1,13 +1,16 @@
-# Database extractor configuration.
-# Used by: DatabaseExtractor.from_config("ETLS/config/database_config.yaml")
-#
-# Option A — full SQLAlchemy URL (recommended). Secrets come from env vars
-# expanded as ${VAR} (see .env.example).
-database:
-  name: analytics_dwh
-  connection_url: "CONNECT_URL"
-  pool_pre_ping: true
+# Database loader / extractor configuration.
+# Used by: DatabaseLoader.from_config("ETLS/config/database_config.yaml", section="sqlite")
 
+# ── SQLite (zero-config, great for local testing) ────────────────────────────
+#sqlite:
+#  name: local_sqlite
+#  connection_url: "sqlite:///DATA/Output/etl_test.db"
+#  table: etl_results        # overridden per-pipeline in the test
+#  if_exists: replace        # drop & recreate on each test run
+#  pool_pre_ping: false      # SQLite has no connection pooling
+
+# ── Production Oracle DWH (requires oracledb driver) ─────────────────────────
+#
 # Option B — assemble from parts (uncomment and remove connection_url above):
 #   drivername: postgresql+psycopg2
 #   host: ${DB_HOST:localhost}

@@ -1,12 +1,28 @@
 # Excel extractor configuration.
 # Used by: ExcelExtractor.from_config("ETLS/config/excel_config.yaml")
-excel:
-  name: "File name" 
-  file_path: "DATA/Excel/.."
-  sheet_name: 0            # sheet name (str) or index (int)
-  read_options:            # forwarded to pandas.read_excel
+
+coffee:
+  name: coffee_sales
+  file_path: "DATA/Output/coffee_sales.xlsx"   # created by test setup from the CSV
+  sheet_name: 0
+  read_options:
     header: 0
-    # skiprows: 2
-    # usecols: "A:F"
-    # dtype:
-    #   customer_id: str
+
+chocolate:
+  name: chocolate_sales
+  file_path: "DATA/Output/chocolate_sales.xlsx"  # created by test setup from the CSV
+  sheet_name: 0
+  read_options:
+    header: 0
+
+# Generic template — fill in for custom workbooks:
+# excel:
+#   name: "my_workbook"
+#   file_path: "DATA/Excel/report.xlsx"
+#   sheet_name: 0
+#   read_options:
+#     header: 0
+#     # skiprows: 2
+#     # usecols: "A:F"
+#     # dtype:
+#     #   customer_id: str
