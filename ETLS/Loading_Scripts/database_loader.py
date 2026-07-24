@@ -207,18 +207,37 @@ class DatabaseLoader(BaseLoader):
             ) from exc
 
     def _dtype_overrides(self, df: pd.DataFrame) -> dict[str, Any] | None:
-        """Oracle's dialect rejects the generic decimal-precision ``Float`` type
-        pandas infers for float64/float32 columns (it wants binary precision
-        instead) — map those columns to ``BINARY_DOUBLE`` explicitly.
+        """Oracle-specific dtype fixups pandas' default inference gets wrong:
+
+        * float64/float32 columns get the generic decimal-precision ``Float``
+          type, which Oracle's dialect rejects outright (it wants binary
+          precision) — map them to ``BINARY_DOUBLE``.
+        * object/string columns get an unbounded ``Text`` type, which Oracle's
+          dialect maps to ``CLOB`` — unusable in ``GROUP BY``/``DISTINCT``/
+          ordinary comparisons. Size them as ``VARCHAR2`` instead, based on
+          each column's actual longest value.
         """
         if self.engine.dialect.name != "oracle":
             return None
-        float_cols = df.select_dtypes(include=["float64", "float32"]).columns
-        if not len(float_cols):
-            return None
-        from sqlalchemy.dialects.oracle import BINARY_DOUBLE
 
-        return {col: BINARY_DOUBLE() for col in float_cols}
+        overrides: dict[str, Any] = {}
+
+        float_cols = df.select_dtypes(include=["float64", "float32"]).columns
+        if len(float_cols):
+            from sqlalchemy.dialects.oracle import BINARY_DOUBLE
+
+            overrides.update({col: BINARY_DOUBLE() for col in float_cols})
+
+        str_cols = df.select_dtypes(include=["object"]).columns
+        if len(str_cols):
+            from sqlalchemy.types import VARCHAR
+
+            for col in str_cols:
+                max_len = df[col].astype(str).str.len().max()
+                size = min(max(int(max_len or 1) * 2, 32), 4000)
+                overrides[col] = VARCHAR(size)
+
+        return overrides or None
 
     def _oracle_identifier(self, name: str | None) -> str | None:
         """Oracle's dialect denormalizes an all-caps name to itself for

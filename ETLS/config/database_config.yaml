@@ -23,10 +23,10 @@ oracle:
   # Service-name connection (required for an Oracle multitenant PDB — a SID
   # only resolves the CDB root, e.g. "FREE"; the PDB, e.g. "FREEPDB1", is only
   # registered with the listener as a service name).
-#  query_params:
- #   service_name: ${ORACLE_SERVICE_NAME:FREEPDB1}
-#  # schema: table owner, only needed if it differs from ORACLE_USER — uncomment and set ORACLE_SCHEMA
-#  #  schema: ${ORACLE_SCHEMA}
+  query_params:
+    service_name: ${ORACLE_SERVICE_NAME:FREEPDB1}
+  # schema: table owner, only needed if it differs from ORACLE_USER — uncomment and set ORACLE_SCHEMA
+  #  schema: ${ORACLE_SCHEMA}
   table: etl_results        # overridden per-table by the caller
   if_exists: append         # "replace" drops & recreates; "append" inserts into an existing table
   pool_pre_ping: true

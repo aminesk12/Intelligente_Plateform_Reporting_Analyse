@@ -9,20 +9,24 @@ Prerequisites
 2. `cp .env.example .env` and fill in POSTGRES_HOST / POSTGRES_PORT /
    POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD for your PFE_DATABASE database.
 
-Pipelines
----------
-1. Coffee Sales   : clean            → etls_coffee_sales
-                     → aggregate by coffee type → etls_coffee_sales_by_type
-2. Chocolate Sales: parse currency, clean       → etls_chocolate_sales
-                     → aggregate by country      → etls_chocolate_sales_by_country
+Sources are declared in ETLS/config/sources.yaml, not in this file — adding a
+new CSV only needs a new entry there (file/clean/aggregation/targets). A
+source only needs a change *here* if its transform requires logic beyond
+CleaningTransformer/AggregationTransformer (e.g. the chocolate source's
+currency-string parsing) — add that one step to CUSTOM_STEP_FACTORIES below
+and reference it by name via the source's `custom_steps` list in the YAML.
 
 Each table is loaded with `if_exists="replace"`, so reruns are safe.
 """
 
 from __future__ import annotations
 
+import sys
+from typing import Any, Callable
+
 import pandas as pd
 
+from ETLS.core.base_transformer import BaseTransformer
 from ETLS.core.config import load_yaml_config
 from ETLS.core.logging_config import setup_logging
 from ETLS.Loading_Scripts import DatabaseLoader
@@ -33,9 +37,8 @@ from ETLS.Transformation_Scripts import (
     PipelineTransformer,
 )
 
-COFFEE_CSV = "DATA/Excel/Coffe Sales.csv"
-CHOCOLATE_CSV = "DATA/Excel/Chocolate Sales.csv"
 DATABASE_CONFIG = "ETLS/config/database_config.yaml"
+SOURCES_CONFIG = "ETLS/config/sources.yaml"
 
 
 def _banner(title: str) -> None:
@@ -56,111 +59,64 @@ def _postgres_loader(connection_url: str, schema: str | None, table: str) -> Dat
 
 
 # ---------------------------------------------------------------------------
-# Pipeline 1 — Coffee Sales
+# Custom steps: transformations too bespoke for plain YAML (e.g. an arbitrary
+# parsing callable). Referenced by name from a source's `custom_steps` list
+# in ETLS/config/sources.yaml.
 # ---------------------------------------------------------------------------
 
-def run_coffee_pipeline(connection_url: str, schema: str | None) -> None:
-    _banner("PIPELINE 1: Coffee Sales -> PostgreSQL PFE_DATABASE")
+def _parse_chocolate_amount() -> MappingTransformer:
+    """Parse "$5,320.00" -> float, dropping the original Amount column."""
+    return MappingTransformer(
+        add_columns={
+            "amount_usd": lambda d: (
+                d["Amount"].str.replace(r"[$,]", "", regex=True).astype(float)
+            ),
+        },
+        drop_columns=["Amount"],
+        name="choc_map",
+    )
+
+
+CUSTOM_STEP_FACTORIES: dict[str, Callable[[], BaseTransformer]] = {
+    "parse_chocolate_amount": _parse_chocolate_amount,
+}
+
+
+# ---------------------------------------------------------------------------
+
+def run_source(cfg: dict[str, Any], connection_url: str, schema: str | None, index: int) -> None:
+    """Extract, clean, aggregate, and load one source — entirely driven by
+    its ``sources.yaml`` entry."""
+    name = cfg["name"]
+    label = cfg.get("label", name)
+    _banner(f"PIPELINE {index}: {label} -> PostgreSQL PFE_DATABASE")
 
     # --- Extract ---
-    df = pd.read_csv(COFFEE_CSV)
+    df = pd.read_csv(cfg["file"])
     print(f"Extracted : {len(df)} rows | columns: {list(df.columns)}")
 
     # --- Transform ---
-    pipeline = PipelineTransformer(
-        steps=[
-            CleaningTransformer(
-                normalize_columns=True,
-                strip_strings=True,
-                drop_na=True,
-                drop_duplicates=True,
-                cast={
-                    "date": "datetime64[ns]",
-                    "datetime": "datetime64[ns]",
-                },
-                name="coffee_clean",
-            ),
-        ],
-        name="coffee_pipeline",
-    )
+    steps: list[BaseTransformer] = [
+        CUSTOM_STEP_FACTORIES[step_name]() for step_name in cfg.get("custom_steps", [])
+    ]
+    steps.append(CleaningTransformer(**cfg["clean"], name=f"{name}_clean"))
+    pipeline = PipelineTransformer(steps=steps, name=f"{name}_pipeline")
     cleaned = pipeline.transform(df)
     print(f"After clean: {cleaned.output_rows} rows | row delta: {cleaned.row_delta}")
 
-    agg = AggregationTransformer(
-        group_by=["coffee_name"],
-        agg={"money": ["sum", "mean", "count"]},
-        sort_by=["money_sum"],
-        ascending=False,
-        name="coffee_agg",
-    )
+    agg_cfg = dict(cfg["aggregation"])
+    log_label = agg_cfg.pop("log_label")
+    agg = AggregationTransformer(**agg_cfg, name=f"{name}_agg")
     aggregated = agg.transform(cleaned)
-    print(f"Aggregated by coffee type: {aggregated.output_rows} rows")
+    print(f"Aggregated {log_label}: {aggregated.output_rows} rows")
 
     # --- Load ---
-    with _postgres_loader(connection_url, schema, "etls_coffee_sales") as loader:
+    targets = cfg["targets"]
+    with _postgres_loader(connection_url, schema, targets["cleaned"]) as loader:
         r = loader.load(cleaned)
         print(f"[Postgres] cleaned -> {r.destination} ({r.rows_loaded} rows)")
 
-    with _postgres_loader(connection_url, schema, "etls_coffee_sales_by_type") as loader:
-        r = loader.load(aggregated)
-        print(f"[Postgres] agg     -> {r.destination} ({r.rows_loaded} rows)")
-
-
-# ---------------------------------------------------------------------------
-# Pipeline 2 — Chocolate Sales
-# ---------------------------------------------------------------------------
-
-def run_chocolate_pipeline(connection_url: str, schema: str | None) -> None:
-    _banner("PIPELINE 2: Chocolate Sales -> PostgreSQL PFE_DATABASE")
-
-    # --- Extract ---
-    df = pd.read_csv(CHOCOLATE_CSV)
-    print(f"Extracted : {len(df)} rows | columns: {list(df.columns)}")
-
-    # --- Transform ---
-    pipeline = PipelineTransformer(
-        steps=[
-            # Step 1: parse "$5,320.00" -> float, drop original Amount column
-            MappingTransformer(
-                add_columns={
-                    "amount_usd": lambda d: (
-                        d["Amount"].str.replace(r"[$,]", "", regex=True).astype(float)
-                    ),
-                },
-                drop_columns=["Amount"],
-                name="choc_map",
-            ),
-            # Step 2: normalise names, clean, cast date
-            CleaningTransformer(
-                normalize_columns=True,
-                strip_strings=True,
-                drop_na=True,
-                drop_duplicates=True,
-                cast={"date": "datetime64[ns]"},
-                name="choc_clean",
-            ),
-        ],
-        name="chocolate_pipeline",
-    )
-    cleaned = pipeline.transform(df)
-    print(f"After clean: {cleaned.output_rows} rows | row delta: {cleaned.row_delta}")
-
-    agg = AggregationTransformer(
-        group_by=["country"],
-        agg={"amount_usd": "sum", "boxes_shipped": "sum"},
-        sort_by=["amount_usd"],
-        ascending=False,
-        name="choc_agg",
-    )
-    aggregated = agg.transform(cleaned)
-    print(f"Aggregated by country: {aggregated.output_rows} rows")
-
-    # --- Load ---
-    with _postgres_loader(connection_url, schema, "etls_chocolate_sales") as loader:
-        r = loader.load(cleaned)
-        print(f"[Postgres] cleaned -> {r.destination} ({r.rows_loaded} rows)")
-
-    with _postgres_loader(connection_url, schema, "etls_chocolate_sales_by_country") as loader:
+    with _postgres_loader(connection_url, schema, targets["aggregated"]) as loader:
         r = loader.load(aggregated)
         print(f"[Postgres] agg     -> {r.destination} ({r.rows_loaded} rows)")
 
@@ -174,7 +130,17 @@ if __name__ == "__main__":
     connection_url = postgres_cfg.get("connection_url") or DatabaseLoader._build_url(postgres_cfg)
     schema = postgres_cfg.get("schema")
 
-    run_coffee_pipeline(connection_url, schema)
-    run_chocolate_pipeline(connection_url, schema)
+    sources = load_yaml_config(SOURCES_CONFIG, section="sources")
+
+    failure_count = 0
+    for i, source_cfg in enumerate(sources, start=1):
+        try:
+            run_source(source_cfg, connection_url, schema, i)
+        except Exception as exc:  # noqa: BLE001 - isolate one bad source from the rest
+            print(f"\n[FAILED] source '{source_cfg.get('name', i)}': {exc}", file=sys.stderr)
+            failure_count += 1
+
+    if failure_count:
+        sys.exit(1)
 
     print("\n\nAll pipelines complete. Tables loaded into the PostgreSQL PFE_DATABASE database.")

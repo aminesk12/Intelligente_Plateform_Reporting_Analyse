@@ -45,7 +45,12 @@ class CleaningTransformer(BaseTransformer):
         ``False`` (default) → do nothing.
     cast:
         ``{column: dtype}`` — cast columns to a pandas dtype string, e.g.
-        ``{"amount": "float64", "event_date": "datetime64[ns]"}``.
+        ``{"amount": "float64", "event_date": "datetime64[ns]"}``. For a
+        datetime column with day-first source dates (e.g. ``"27/04/2022"``),
+        pass a dict instead of a bare dtype string:
+        ``{"event_date": {"dtype": "datetime64[ns]", "dayfirst": True}}`` —
+        without it, ``pd.to_datetime`` assumes month-first and either raises
+        an unparseable date to ``NaT`` or silently swaps day/month.
     """
 
     transformer_type = "cleaning"
@@ -58,7 +63,7 @@ class CleaningTransformer(BaseTransformer):
         fill_na: dict[str, Any] | None = None,
         drop_na: bool | list[str] = False,
         drop_duplicates: bool | list[str] = False,
-        cast: dict[str, str] | None = None,
+        cast: dict[str, str | dict[str, Any]] | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__(name=name)
@@ -99,13 +104,15 @@ class CleaningTransformer(BaseTransformer):
             cols = [c for c in self.drop_duplicates if c in df.columns]
             df = df.drop_duplicates(subset=cols).reset_index(drop=True)
 
-        for col, dtype in self.cast.items():
+        for col, spec in self.cast.items():
             if col not in df.columns:
                 self.logger.warning("Cast skipped: column '%s' not found.", col)
                 continue
+            dtype = spec["dtype"] if isinstance(spec, dict) else spec
+            dayfirst = spec.get("dayfirst", False) if isinstance(spec, dict) else False
             try:
                 if "datetime" in str(dtype):
-                    df[col] = pd.to_datetime(df[col], errors="coerce")
+                    df[col] = pd.to_datetime(df[col], errors="coerce", dayfirst=dayfirst)
                 else:
                     df[col] = df[col].astype(dtype)
             except (ValueError, TypeError) as exc:

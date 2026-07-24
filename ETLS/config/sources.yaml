@@ -1,0 +1,75 @@
+# Source-driven ETL pipeline definitions for run_postgres_pipeline.py.
+#
+# Adding a new CSV source requires ONLY a new entry in this list — no Python
+# changes — as long as it's a plain extract/clean/aggregate/load shape like
+# the two below. A source only needs a Python change if its transform needs
+# logic beyond CleaningTransformer/AggregationTransformer (e.g. the chocolate
+# source's currency-string parsing, which can't be expressed in YAML) — add
+# that one step to CUSTOM_STEP_FACTORIES in run_postgres_pipeline.py and
+# reference it here by name via `custom_steps`.
+#
+# Field reference (mirrors the transformer constructors in
+# ETLS/Transformation_Scripts/ exactly — see those files for full docs):
+#   file          - path to the source CSV
+#   label         - display name used in the console banner
+#   custom_steps  - optional list of CUSTOM_STEP_FACTORIES names, run before `clean`
+#   clean         - kwargs for CleaningTransformer (normalize_columns, strip_strings,
+#                   drop_na, drop_duplicates, cast, fill_na)
+#   aggregation   - kwargs for AggregationTransformer (group_by, agg, sort_by,
+#                   ascending, ...), plus `log_label` (text for the "Aggregated ..."
+#                   console line, e.g. "by country")
+#   targets       - table names: `cleaned` and `aggregated`
+
+sources:
+  - name: coffee
+    label: "Coffee Sales"
+    file: "DATA/Excel/Coffe Sales.csv"
+    clean:
+      normalize_columns: true
+      strip_strings: true
+      drop_na: true
+      drop_duplicates: true
+      cast:
+        date: "datetime64[ns]"
+        datetime: "datetime64[ns]"
+    aggregation:
+      group_by: ["coffee_name"]
+      agg:
+        money: ["sum", "mean", "count"]
+      sort_by: ["money_sum"]
+      ascending: false
+      log_label: "by coffee type"
+    targets:
+      cleaned: "etls_coffee_sales"
+      aggregated: "etls_coffee_sales_by_type"
+
+  - name: chocolate
+    label: "Chocolate Sales"
+    file: "DATA/Excel/Chocolate Sales.csv"
+    # Parses "$5,320.00" -> float and drops the original Amount column —
+    # see CUSTOM_STEP_FACTORIES["parse_chocolate_amount"] in
+    # run_postgres_pipeline.py.
+    custom_steps: ["parse_chocolate_amount"]
+    clean:
+      normalize_columns: true
+      strip_strings: true
+      drop_na: true
+      drop_duplicates: true
+      cast:
+        # Source dates are day-first (e.g. "27/04/2022"); without dayfirst,
+        # pd.to_datetime assumes month-first and either coerces unparseable
+        # dates to NaT or silently swaps day/month.
+        date:
+          dtype: "datetime64[ns]"
+          dayfirst: true
+    aggregation:
+      group_by: ["country"]
+      agg:
+        amount_usd: "sum"
+        boxes_shipped: "sum"
+      sort_by: ["amount_usd"]
+      ascending: false
+      log_label: "by country"
+    targets:
+      cleaned: "etls_chocolate_sales"
+      aggregated: "etls_chocolate_sales_by_country"
