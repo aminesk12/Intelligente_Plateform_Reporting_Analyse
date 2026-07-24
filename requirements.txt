@@ -13,7 +13,7 @@ SQLAlchemy>=2.0
 psycopg2-binary>=2.9     # PostgreSQL
 # pymysql>=1.1          # MySQL / MariaDB
 # pyodbc>=5.0           # SQL Server
-# oracledb>=2.0         # Oracle
+oracledb>=2.0            # Oracle — required by DatabaseLoader targeting the ETLS database
 
 # --- Extraction: API / SAP OData ---
 requests>=2.32
@@ -29,3 +29,4 @@ sqlalchemy_hana>=3.0    # SQLAlchemy dialect for HANA (preferred path in DataSph
 # --- Testing (dev only) ---
 pytest>=8.0
 responses>=0.25          # mock HTTP for API / SAP OData extractor tests
+

@@ -9,16 +9,46 @@
 #  if_exists: replace        # drop & recreate on each test run
 #  pool_pre_ping: false      # SQLite has no connection pooling
 
-# ── Production Oracle DWH (requires oracledb driver) ─────────────────────────
-#
-# Option B — assemble from parts (uncomment and remove connection_url above):
-#   drivername: postgresql+psycopg2
-#   host: ${DB_HOST:localhost}
-#   port: 5432
-#   database: ${DB_NAME}
-#   username: ${DB_USER}
-#   password: ${DB_PASSWORD}
-#
+# ── Oracle "ETLS" database (load destination) ────────────────────────────────
+# Requires the `oracledb` driver (see requirements.txt) — pure Python "thin"
+# mode by default, no Oracle Instant Client needed.
+# Used by: run_oracle_pipeline.py, and any DatabaseLoader.from_config(..., section="oracle")
+oracle:
+  name: oracle_etls
+  drivername: oracle+oracledb
+  host: ${ORACLE_HOST:localhost}
+  port: ${ORACLE_PORT:1521}
+  username: ${ORACLE_USER}
+  password: ${ORACLE_PASSWORD}
+  # Service-name connection (required for an Oracle multitenant PDB — a SID
+  # only resolves the CDB root, e.g. "FREE"; the PDB, e.g. "FREEPDB1", is only
+  # registered with the listener as a service name).
+#  query_params:
+ #   service_name: ${ORACLE_SERVICE_NAME:FREEPDB1}
+#  # schema: table owner, only needed if it differs from ORACLE_USER — uncomment and set ORACLE_SCHEMA
+#  #  schema: ${ORACLE_SCHEMA}
+  table: etl_results        # overridden per-table by the caller
+  if_exists: append         # "replace" drops & recreates; "append" inserts into an existing table
+  pool_pre_ping: true
+
+# ── PostgreSQL "PFE_DATABASE" (load destination) ──────────────────────────────
+# Requires the `psycopg2-binary` driver (see requirements.txt).
+# Used by: run_postgres_pipeline.py, and any DatabaseLoader.from_config(..., section="postgres")
+postgres:
+  name: postgres_pfe
+  drivername: postgresql+psycopg2
+  host: ${POSTGRES_HOST:localhost}
+  port: ${POSTGRES_PORT:5432}
+  username: ${POSTGRES_USER}
+  password: ${POSTGRES_PASSWORD}
+  database: ${POSTGRES_DB:PFE_DATABASE}
+  # schema: table owner, only needed if it differs from the default "public" — uncomment and set POSTGRES_SCHEMA
+  #  schema: ${POSTGRES_SCHEMA}
+  table: etl_results        # overridden per-table by the caller
+  if_exists: append         # "replace" drops & recreates; "append" inserts into an existing table
+  pool_pre_ping: true
+
+# ── Other targets — assemble from parts the same way as "oracle" above ───────
 # Driver reference (install the matching package — see requirements.txt):
 #   PostgreSQL : postgresql+psycopg2://...
 #   MySQL      : mysql+pymysql://...

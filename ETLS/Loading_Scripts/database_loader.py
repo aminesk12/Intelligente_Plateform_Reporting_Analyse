@@ -206,20 +206,53 @@ class DatabaseLoader(BaseLoader):
                 f"Cannot connect to database '{self.name}': {exc}"
             ) from exc
 
+    def _dtype_overrides(self, df: pd.DataFrame) -> dict[str, Any] | None:
+        """Oracle's dialect rejects the generic decimal-precision ``Float`` type
+        pandas infers for float64/float32 columns (it wants binary precision
+        instead) — map those columns to ``BINARY_DOUBLE`` explicitly.
+        """
+        if self.engine.dialect.name != "oracle":
+            return None
+        float_cols = df.select_dtypes(include=["float64", "float32"]).columns
+        if not len(float_cols):
+            return None
+        from sqlalchemy.dialects.oracle import BINARY_DOUBLE
+
+        return {col: BINARY_DOUBLE() for col in float_cols}
+
+    def _oracle_identifier(self, name: str | None) -> str | None:
+        """Oracle's dialect denormalizes an all-caps name to itself for
+        ``has_table()`` but normalizes reflected names to lowercase for the
+        ``MetaData.reflect(only=...)`` call pandas' ``if_exists="replace"``
+        uses — an all-caps ``table=`` desyncs the two and reflect() reports
+        the (existing) table as not found. Lowercasing keeps both paths
+        consistent; Oracle still stores/matches it uppercase internally.
+        """
+        if name and self.engine.dialect.name == "oracle" and name.isupper():
+            return name.lower()
+        return name
+
     def _load(self, df: pd.DataFrame, **kwargs: Any) -> dict[str, Any]:
         if df.empty:
             self.logger.warning("Load skipped: input DataFrame is empty.")
             return {"skipped": True, "reason": "empty_dataframe"}
 
+        # Oracle's dialect can't compile the multi-row VALUES syntax that
+        # method="multi" generates — fall back to one-row-per-statement.
+        method = self.method
+        if self.engine.dialect.name == "oracle" and method == "multi":
+            method = None
+
         with self.engine.begin() as conn:
             df.to_sql(
-                self.table,
+                self._oracle_identifier(self.table),
                 conn,
-                schema=self.schema,
+                schema=self._oracle_identifier(self.schema),
                 if_exists=self.if_exists,
                 index=self.index,
                 chunksize=self.chunksize,
-                method=self.method,
+                method=method,
+                dtype=self._dtype_overrides(df),
             )
 
         return {

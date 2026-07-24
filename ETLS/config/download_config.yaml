@@ -1,0 +1,22 @@
+# Remote file download jobs for Data_Downloader.py.
+# Each job is streamed via HTTP(S) to a local path under DATA/ and skipped on
+# rerun unless `overwrite: true` (same idempotent-rerun pattern the loaders use).
+#
+# Supported extensions -> default destination folder (used when `dest` is omitted):
+#   .xlsx / .xls / .xlsm -> DATA/Excel
+#   .db / .sqlite / .sqlite3 -> DATA/database
+#   .json -> DATA/API
+
+downloads: []
+# downloads:
+#   - name: coffee_sales_raw
+#     url: "https://example.com/datasets/coffee_sales.xlsx"
+#     # dest: "DATA/Excel/coffee_sales.xlsx"   # optional, inferred from the URL otherwise
+#     overwrite: false
+#   - name: sample_json
+#     url: "https://example.com/datasets/sample.json"
+#   - name: sample_sqlite
+#     url: "https://example.com/datasets/sample.db"
+#     auth:
+#       type: bearer
+#       token: "${DOWNLOAD_TOKEN}"

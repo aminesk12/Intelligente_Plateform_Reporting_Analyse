@@ -82,6 +82,28 @@ Config files live in `ETLS/config/`. Secrets are referenced as `${VAR}` or
 `${VAR:default}` and resolved from the environment (or a `.env` file). See each
 `*_config.yaml` for documented examples.
 
+## Loading to Oracle (the "ETLS" database)
+
+`DatabaseLoader` writes any extracted/transformed DataFrame straight to Oracle
+via SQLAlchemy + `oracledb` (pure-Python "thin" mode, no Instant Client
+needed). Connection details live in `ETLS/config/database_config.yaml`
+(section `oracle`), sourced from `${ORACLE_HOST,ORACLE_PORT,ORACLE_SERVICE_NAME,ORACLE_USER,ORACLE_PASSWORD}`
+in `.env`:
+
+```python
+from ETLS.core.config import load_yaml_config
+from ETLS.Loading_Scripts import DatabaseLoader
+
+cfg = load_yaml_config("ETLS/config/database_config.yaml", section="oracle")
+url = DatabaseLoader._build_url(cfg)
+
+with DatabaseLoader(url, table="ETLS_SALES", if_exists="replace") as loader:
+    result = loader.load(transformation_result)
+```
+
+See `run_oracle_pipeline.py` at the project root for a full runnable example
+(CSV → clean → aggregate → load into Oracle, two datasets, four tables).
+
 ## SAP options
 
 `SAPODataExtractor` covers the portable **OData** path (no extra SDK needed).
@@ -95,9 +117,7 @@ Two alternatives are available if your landscape needs them:
 
 ## Next steps
 
-This is the **Extract** layer. Planned, following the same contract:
+`Transformation_Scripts/` and `Loading_Scripts/` (Oracle, SAP DataSphere, file,
+API) are implemented — see above. Still planned:
 
-- `Transformation_Scripts/` — cleaning, typing, business rules
-- `Loading_Scripts/` — load to the warehouse (destination TBD)
 - `flows/` — Prefect flows that orchestrate extract → transform → load
-```
